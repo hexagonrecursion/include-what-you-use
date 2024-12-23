@@ -228,6 +228,17 @@ CommandlineFlags::CommandlineFlags()
   keep.emplace("*.moc");
 }
 
+enum AllowDenyOpt {
+    kOnlyAddInclude = 1,
+    kIgnoreAddInclude,
+    kOnlyRemoveInclude,
+    kIgnoreRemoveInclude,
+    kOnlyAddFwdDecl,
+    kIgnoreAddFwdDecl,
+    kOnlyRemoveFwdDecl,
+    kIgnoreRemoveFwdDecl
+};
+
 int CommandlineFlags::ParseArgv(int argc, char** argv) {
   static const struct option longopts[] = {
     {"check_also", required_argument, nullptr, 'c'},  // can be specified >once
@@ -250,6 +261,14 @@ int CommandlineFlags::ParseArgv(int argc, char** argv) {
     {"debug", required_argument, nullptr, 'd'},
     {"regex", required_argument, nullptr, 'r'},
     {"experimental", required_argument, nullptr, 'p'},
+    {"only_add_include", required_argument, nullptr, kOnlyAddInclude},
+    {"ignore_add_include", required_argument, nullptr, kIgnoreAddInclude},
+    {"only_remove_include", required_argument, nullptr, kOnlyRemoveInclude},
+    {"ignore_remove_include", required_argument, nullptr, kIgnoreRemoveInclude},
+    {"only_add_fwd_decl", required_argument, nullptr, kOnlyAddFwdDecl},
+    {"ignore_add_fwd_decl", required_argument, nullptr, kIgnoreAddFwdDecl},
+    {"only_remove_fwd_decl", required_argument, nullptr, kOnlyRemoveFwdDecl},
+    {"ignore_remove_fwd_decl", required_argument, nullptr, kIgnoreRemoveFwdDecl},
     {nullptr, 0, nullptr, 0}
   };
   static const char shortopts[] = "v:c:m:d:nr";
@@ -341,6 +360,14 @@ int CommandlineFlags::ParseArgv(int argc, char** argv) {
         }
         break;
       }
+      case kOnlyAddInclude: only_add_include = optarg; break;
+      case kIgnoreAddInclude: ignore_add_include = optarg; break;
+      case kOnlyRemoveInclude: only_remove_include = optarg; break;
+      case kIgnoreRemoveInclude: ignore_remove_include = optarg; break;
+      case kOnlyAddFwdDecl: only_add_fwd_decl = optarg; break;
+      case kIgnoreAddFwdDecl: ignore_add_fwd_decl = optarg; break;
+      case kOnlyRemoveFwdDecl: only_remove_fwd_decl = optarg; break;
+      case kIgnoreRemoveFwdDecl: ignore_remove_fwd_decl = optarg; break;
       case -1:
         return optind;  // means 'no more input'
       default:

@@ -92,6 +92,14 @@ struct CommandlineFlags {
 
   set<string> check_also;  // -c: globs to report iwyu violations for
   set<string> keep;        // -k: globs to force-keep includes for
+  string only_add_include;
+  string ignore_add_include;
+  string only_remove_include;
+  string ignore_remove_include;
+  string only_add_fwd_decl;
+  string ignore_add_fwd_decl;
+  string only_remove_fwd_decl;
+  string ignore_remove_fwd_decl;
   bool transitive_includes_only;   // -t: don't add 'new' #includes to files
   int verbose;             // -v: how much information to emit as we parse
   vector<string> mapping_files; // -m: mapping files

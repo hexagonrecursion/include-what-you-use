@@ -33,6 +33,7 @@
 #include "iwyu_location_util.h"
 #include "iwyu_path_util.h"
 #include "iwyu_preprocessor.h"
+#include "iwyu_regex.h"
 #include "iwyu_stl_util.h"
 #include "iwyu_string_util.h"
 #include "iwyu_verrs.h"
@@ -2184,6 +2185,34 @@ size_t PrintableDiffs(const string& filename,
   return num_edits;
 }
 
+bool IsAllowAddInclude(const OneIncludeOrForwardDeclareLine& line) {
+  string name = line.quoted_include();
+  if (!GlobalFlags().only_add_include.empty() && !RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().only_add_include)) return false;
+  if (!GlobalFlags().ignore_add_include.empty() && RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().ignore_add_include)) return false;
+  return true;
+}
+
+bool IsAllowRemoveInclude(const OneIncludeOrForwardDeclareLine& line) {
+  string name = line.quoted_include();
+  if (!GlobalFlags().only_remove_include.empty() && !RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().only_remove_include)) return false;
+  if (!GlobalFlags().ignore_remove_include.empty() && RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().ignore_remove_include)) return false;
+  return true;
+}
+
+bool IsAllowAddFwdDecl(const OneIncludeOrForwardDeclareLine& line) {
+  string name = line.fwd_decl()->getName().str();
+  if (!GlobalFlags().only_add_fwd_decl.empty() && !RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().only_add_fwd_decl)) return false;
+  if (!GlobalFlags().ignore_add_fwd_decl.empty() && RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().ignore_add_fwd_decl)) return false;
+  return true;
+}
+
+bool IsAllowRemoveFwdDecl(const OneIncludeOrForwardDeclareLine& line) {
+  string name = line.fwd_decl()->getName().str();
+  if (!GlobalFlags().only_remove_fwd_decl.empty() && !RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().only_remove_fwd_decl)) return false;
+  if (!GlobalFlags().ignore_remove_fwd_decl.empty() && RegexMatch(GlobalFlags().regex_dialect, name, GlobalFlags().ignore_remove_fwd_decl)) return false;
+  return true;
+}
+
 }  // namespace internal
 
 void IwyuFileInfo::HandlePreprocessingDone() {
@@ -2278,6 +2307,20 @@ size_t IwyuFileInfo::CalculateAndReportIwyuViolations() {
   EmitWarningMessages(symbol_uses_);
   internal::CalculateDesiredIncludesAndForwardDeclares(
       symbol_uses_, associated_desired_includes, kept_includes_,  &lines_);
+
+  for (OneIncludeOrForwardDeclareLine& line : lines_) {
+    if (line.IsIncludeLine()) {
+      if (line.is_present() && !line.is_desired() && !internal::IsAllowRemoveInclude(line))
+        line.set_desired();
+      if (!line.is_present() && line.is_desired() && !internal::IsAllowAddInclude(line))
+        line.clear_desired();
+    } else {
+      if (line.is_present() && !line.is_desired() && !internal::IsAllowRemoveFwdDecl(line))
+        line.set_desired();
+      if (!line.is_present() && line.is_desired() && !internal::IsAllowAddFwdDecl(line))
+        line.clear_desired();
+    }
+  }
 
   // Remove desired inclusions that have been inhibited by pragma
   // "no_include".
