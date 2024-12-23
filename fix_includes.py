@@ -2071,6 +2071,23 @@ def _GetSymbolNameFromForwardDeclareLine(line):
   return symbol_name
 
 
+def GetLineSortOrdinal(kind, quoted_includes_first):
+  if not quoted_includes_first:
+    # The default sorts #include <vector> before #include "bar.h"
+    return kind
+  # Alternative sort order: _NONSYSTEM_INCLUDE_KIND and _PROJECT_INCLUDE_KIND before _C_SYSTEM_INCLUDE_KIND and _CXX_SYSTEM_INCLUDE_KIND
+  sort_order = {
+    _MAIN_CU_INCLUDE_KIND: 1,
+    _NONSYSTEM_INCLUDE_KIND: 2,
+    _PROJECT_INCLUDE_KIND: 3,
+    _C_SYSTEM_INCLUDE_KIND: 4,
+    _CXX_SYSTEM_INCLUDE_KIND: 5,
+    _FORWARD_DECLARE_KIND: 6,
+    _EOF_KIND: 7,
+  }
+  return sort_order[kind]
+
+
 def FixFileLines(iwyu_record, file_lines, flags, fileinfo):
   """Applies one block of lines from the iwyu output script.
 
@@ -2142,10 +2159,16 @@ def FixFileLines(iwyu_record, file_lines, flags, fileinfo):
   # Add a sentinel decorated move-span, to make life easy, and sort.
   decorated_move_spans.append(((len(file_lines), len(file_lines)),
                                _EOF_KIND, '', []))
-  if flags.reorder:
-    decorated_move_spans.sort()
-  else:
-    decorated_move_spans.sort(key=lambda x: x[0:-2])
+
+  def key(decorated_span):
+    reorder_span, kind, sort_key, all_lines = decorated_span
+    kind_key = GetLineSortOrdinal(kind, flags.quoted_includes_first)
+    if flags.reorder:
+      return reorder_span, kind_key, sort_key, all_lines
+    else:
+      return reorder_span, kind_key
+
+  decorated_move_spans.sort(key=key)
 
   # Now go through all the lines of the input file and construct the
   # output file.  Before we get to the next reorder-span, we just
@@ -2435,6 +2458,9 @@ def main(argv):
                       help=('Specify the base directory. fix_includes will '
                             'interpret non-absolute filenames relative to this '
                             'path.'))
+  parser.add_argument('--quoted_includes_first', action='store_true',
+                      default=False,
+                      help='When sorting includes, place quoted ones first')
 
   parser.add_argument('files', nargs='*', metavar='FILES')
 
